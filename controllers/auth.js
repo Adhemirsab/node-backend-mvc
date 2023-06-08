@@ -7,20 +7,27 @@ const { handleHttpError } = require("../utils/handleError");
 const registerCtrl = async (req, res) => {
   try {
     req = matchedData(req);
-    const password = await encrypt(req.password);
-    const body = { ...req, password };
+    const user = await usersModel.findOne({ email: req.email }); // Añadir "await" para esperar a que se complete la búsqueda
 
-    const dataUser = await usersModel.create(body);
-    dataUser.set("password", undefined, { strict: false });
-    console.log(dataUser);
-    const data = {
-      token: await tokenSign(dataUser),
-      user: dataUser,
-    };
+    if (user) {
+      handleHttpError(res, "USER_ALREADY_EXIST");
+    } else {
+      const password = await encrypt(req.password);
+      const body = { ...req, password };
 
-    res.send({ data });
+      const dataUser = await usersModel.create(body);
+      dataUser.set("password", undefined, { strict: false });
+      console.log(dataUser);
+
+      const data = {
+        token: await tokenSign(dataUser),
+        user: dataUser,
+      };
+
+      res.send({ data });
+    }
   } catch (error) {
-    handleHttpError(res, { error: error.message }, 404);
+    handleHttpError(res, { error: error.message }, 500);
   }
 };
 
